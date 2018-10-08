@@ -2,15 +2,17 @@
 # project that Pkg activates and instantiate before running the build script.
 #
 # The code in this file would be internal to Pkg, and packages would provide
-# `make.jl`.
+# what's in `make.jl`.
 
 append!(empty!(LOAD_PATH), Base.DEFAULT_LOAD_PATH)
 using Pkg
 
-project = @__DIR__
-make = joinpath(@__DIR__, "make.jl")
+build_project = @__DIR__
+makefile = joinpath(@__DIR__, "make.jl")
 
-Pkg.activate(project)
+Pkg.activate(build_project)
 Pkg.instantiate()
 
-run(`$(Base.julia_cmd()) --startup-file=no --project=$(project) $(make)`)
+withenv("JULIA_LOAD_PATH" => build_project) do
+    run(`$(Base.julia_cmd()) --startup-file=no $(makefile)`)
+end
