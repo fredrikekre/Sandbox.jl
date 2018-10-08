@@ -7,14 +7,26 @@
 append!(empty!(LOAD_PATH), Base.DEFAULT_LOAD_PATH)
 using Pkg
 
-test_project = @__DIR__
-package_project = joinpath(@__DIR__, "..")
-testfile = joinpath(@__DIR__, "tests.jl")
+mktempdir() do tmp
+    test_project = joinpath(@__DIR__, "Project.toml")
+    test_manifest = joinpath(@__DIR__, "Manifest.toml")
+    package_project = joinpath(@__DIR__, "..", "Project.toml")
+    testfile = joinpath(@__DIR__, "tests.jl")
 
-Pkg.activate(test_project)
-Pkg.instantiate()
-Pkg.develop(PackageSpec(path = package_project))
+    tmp_test_project = joinpath(tmp, "Project.toml")
+    tmp_test_manifest = joinpath(tmp, "Manifest.toml")
 
-withenv("JULIA_LOAD_PATH" => test_project) do
-    run(`$(Base.julia_cmd()) --startup-file=no $(testfile)`)
+    # Copy test project to tmp directory
+    cp(test_project, tmp_test_project)
+    if isfile(test_manifest) # ??
+        cp(test_manifest, tmp_test_manifest)
+    end
+    # Activate and instantiate
+    Pkg.activate(tmp_test_project)
+    Pkg.instantiate()
+    Pkg.develop(PackageSpec(path = dirname(package_project)))
+    # Run tests
+    withenv("JULIA_LOAD_PATH" => tmp_test_project) do
+        run(`$(Base.julia_cmd()) --startup-file=no $(testfile)`)
+    end
 end

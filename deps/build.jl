@@ -7,12 +7,24 @@
 append!(empty!(LOAD_PATH), Base.DEFAULT_LOAD_PATH)
 using Pkg
 
-build_project = @__DIR__
-makefile = joinpath(@__DIR__, "make.jl")
+mktempdir() do tmp
+    build_project = joinpath(@__DIR__, "Project.toml")
+    build_manifest = joinpath(@__DIR__, "Manifest.toml")
+    makefile = joinpath(@__DIR__, "make.jl")
 
-Pkg.activate(build_project)
-Pkg.instantiate()
+    tmp_build_project = joinpath(tmp, "Project.toml")
+    tmp_build_manifest = joinpath(tmp, "Manifest.toml")
 
-withenv("JULIA_LOAD_PATH" => build_project) do
-    run(`$(Base.julia_cmd()) --startup-file=no $(makefile)`)
+    # Copy build project to tmp directory
+    cp(build_project, tmp_build_project)
+    if isfile(build_manifest)
+        cp(build_manifest, tmp_build_manifest)
+    end
+    # Activate and instantiate
+    Pkg.activate(tmp_build_project)
+    Pkg.instantiate()
+    # Run build script
+    withenv("JULIA_LOAD_PATH" => tmp_build_project) do
+        run(`$(Base.julia_cmd()) --startup-file=no $(makefile)`)
+    end
 end
